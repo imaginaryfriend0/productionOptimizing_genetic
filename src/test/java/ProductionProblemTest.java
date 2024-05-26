@@ -4,10 +4,6 @@ import io.jenetics.engine.EvolutionStatistics;
 import io.jenetics.util.IntRange;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-
-import javax.swing.*;
-import java.util.Arrays;
 
 import static io.jenetics.engine.Codecs.ofVector;
 import static io.jenetics.engine.EvolutionResult.toBestPhenotype;
@@ -15,7 +11,6 @@ import static io.jenetics.engine.Limits.bySteadyFitness;
 
 public class ProductionProblemTest {
     static int answer = 13000;
-    static int[] bestChromosome;
     @Test
     public void ProductionTest(){
         int[] chromosome = Calculate(0,1000);

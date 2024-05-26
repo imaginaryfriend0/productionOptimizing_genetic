@@ -15,7 +15,7 @@ import java.util.Objects;
 
 import static org.example.ExcelTools.readFromExcel;
 
-class CreateForm extends EvolutionEngine {
+class CreateForm {
     private static int nval;
     private static int mval;
     private static int kval;
@@ -150,7 +150,7 @@ class CreateForm extends EvolutionEngine {
                     panelPane1 = new JPanel(new FlowLayout(FlowLayout.LEFT));
                     pane1 = createTable1(nval);
                     pane1.setBorder(BorderFactory.createTitledBorder("Таблица ограничений выпуска"));
-                    pane1.setPreferredSize(new Dimension(500,125));
+                    pane1.setPreferredSize(new Dimension(500,107));
                     Dimension p1 = pane1.getPreferredSize();
                     System.out.println(p1);
                     panelPane1.add(pane1);
@@ -435,8 +435,4 @@ class CreateForm extends EvolutionEngine {
             columnModel.getColumn(column).setPreferredWidth(width);
         }
     }
-
-
-
-
 }

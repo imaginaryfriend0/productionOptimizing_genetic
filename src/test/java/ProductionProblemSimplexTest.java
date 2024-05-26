@@ -4,10 +4,6 @@ import io.jenetics.engine.EvolutionStatistics;
 import io.jenetics.util.IntRange;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-
-import javax.swing.*;
-import java.util.Arrays;
 
 import static io.jenetics.engine.Codecs.ofVector;
 import static io.jenetics.engine.EvolutionResult.toBestPhenotype;

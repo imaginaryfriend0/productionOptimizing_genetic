@@ -13,7 +13,7 @@ repositories {
 dependencies {
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
-    implementation ("io.jenetics:jenetics:7.2.0")
+    implementation("io.jenetics:jenetics:8.0.0")
     implementation("org.apache.commons:commons-lang3:3.12.0")
     implementation ("org.apache.poi:poi:5.2.5")
     implementation("org.apache.poi:poi-ooxml:5.2.5")

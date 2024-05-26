@@ -5,15 +5,8 @@ import io.jenetics.engine.EvolutionStatistics;
 import io.jenetics.util.DoubleRange;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-
-import javax.swing.*;
-
 import static java.lang.Math.PI;
 import static java.lang.Math.cos;
-import java.util.Arrays;
-
-import static io.jenetics.engine.Codecs.ofVector;
 import static io.jenetics.engine.EvolutionResult.toBestPhenotype;
 import static io.jenetics.engine.Limits.bySteadyFitness;
 
@@ -25,9 +18,6 @@ public class RastriginFunctionTest {
     @Test
     public void RastriginTest(){
         double[] chromosome = Calculate(-R,R,N);
-        int[] intChromosome = new int[2];
-        intChromosome[0] = (int) chromosome[0];
-        intChromosome[1] = (int) chromosome[1];
         double result = fitness(chromosome);
 
         System.out.println("Задача 3: \nОжидаемый результат: " + answer + ".\nПолученный результат: " + result+".");

@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-class ExcelTools extends EvolutionEngine {
+class ExcelTools {
     static void writeToExcel(JTable table1, JTable table2, Workbook wb, String path) throws IOException {
         Sheet sheet1 = wb.createSheet("Таблица ограничений выпуска"); // Создаем новый лист для первой таблицы
         writeTableToSheet(table1, sheet1); // Записываем первую таблицу
@@ -101,3 +101,4 @@ class ExcelTools extends EvolutionEngine {
         return columnNames;
     }
 }
+
