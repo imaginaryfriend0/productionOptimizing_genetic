@@ -32,6 +32,8 @@ class EvolutionAlgorithm {
     private static double[][] resources;
     public static IntRange[] intRanges;
     public static DoubleRange doubleRange;
+    private static StringBuilder debugMessages = new StringBuilder();
+
 
     private static void fillRestrictions(double[][] rest) {
         // Начинаем с 0, поскольку шапка и первый столбец уже исключены
@@ -89,7 +91,7 @@ class EvolutionAlgorithm {
         StringBuilder message = new StringBuilder();
 
         message.append("Лучшая хромосома - ").append(Arrays.toString(bestChromosome)).append(".\n");
-        message.append("Затраты производства по рассчитанному плану составят ").append(rnd((float)bestSumCost)).append(" у.д.е.\n");
+        message.append("Затраты производства по рассчитанному плану (включая кредит) составят ").append(rnd((float)bestSumCost)).append(" у.д.е.\n");
         message.append("Были указаны бюджет в размере ").append(budget).append(" у.д.е и кредитные возможности в размере ").append(zval).append(" у.д.е.\n");
 
         message.append("Выручка с продаж составит ").append(rnd((float)bestSumProfit)).append(" у.д.е.\n");
@@ -97,11 +99,13 @@ class EvolutionAlgorithm {
         message.append("Для реализации рассчитанного плана потребуется взять в кредит ").append(rnd((float)bestCreditUsed)).append(" у.д.е.\n");
         message.append("Прибыль составит ").append(rnd((float)bestNetProfit)).append(" у.д.е.\n");
 
-        message.append("Проценты по кредиту составят ").append(rnd((float)creditPayment(bestCreditUsed,pzval))).append(" у.д.е. при проценте ").append(pzval)
-                .append("% сумма долга с процентами составит ").append(rnd((float) bestCreditUsed + rnd((float)creditPayment(bestCreditUsed,pzval)))).append("\n");
-
+        // Новый расчет процентов по кредиту и общей суммы долга с процентами
+        double totalCreditPaymentValue = totalCreditPayment(bestCreditUsed, pzval, k * 12);
+        double monthlyCreditPayment = totalCreditPaymentValue / (k * 12);
+        double totalCreditWithInterest = bestCreditUsed + (totalCreditPaymentValue - bestCreditUsed); // Сумма кредита плюс проценты
 
         showResults(message);
+        System.out.println(debugMessages);
     }
 
     public static double[] RunEvolution() {
@@ -119,7 +123,7 @@ class EvolutionAlgorithm {
                 statistics = EvolutionStatistics.ofNumber();
 
         final Phenotype<DoubleGene, Double> best = engine.stream()
-                .limit(bySteadyFitness(15))
+                .limit(bySteadyFitness(30))
                 .peek(statistics)
                 .collect(toBestPhenotype());
         return best.genotype().chromosome().stream().mapToDouble(DoubleGene::allele).toArray();
@@ -148,10 +152,22 @@ class EvolutionAlgorithm {
         number = Math.round(number * 100.0f) / 100.0f;
         return number;
     }
-
-    private static double creditPayment(double sum, double percent) {
-        return ((percent / 100) * sum);
+    private static double totalCreditPayment(double principal, double annualRate, int months) {
+        if (annualRate == 0) {
+            return principal; // Процентная ставка 0%, возвращаем только тело кредита
+        }
+        double monthlyRate = annualRate / 100 / 12;
+        double annuityCoefficient = (monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
+        double monthlyPayment = principal * annuityCoefficient;
+        return monthlyPayment * months;
     }
+/*    private static double creditPayment(double z, double p, int k) {
+        if (p == 0) {
+            return 0; // Процентная ставка 0%
+        }
+        p = p / 100;
+        return ((z * p) / 365) * 30.4d * k;
+    }*/
 
 
     public static double fitness(Ranges value) {
@@ -159,6 +175,7 @@ class EvolutionAlgorithm {
         double totalCost = 0;
         int[] x = value.ivalues;
         double y = value.dvalue; // Взятый кредит
+        StringBuilder debugInfo = new StringBuilder();
 
         // Вычисление общей прибыли
         for (int i = 0; i < x.length; i++) {
@@ -172,24 +189,47 @@ class EvolutionAlgorithm {
             }
         }
 
-        // Учет кредита
-        double creditPaymentTotal = creditPayment(y, credPercent);
-        totalCost += creditPaymentTotal + y; // Добавляем и тело кредита, и проценты
-
         // Проверка ограничений
         for (int i = 0; i < x.length; i++) {
             if (x[i] < min[i] || x[i] > max[i] || x[i] > productionLimit[i] * k) {
+                debugInfo.append("Restriction violated for chromosome: ")
+                        .append(Arrays.toString(x))
+                        .append(", credit: ")
+                        .append(y)
+                        .append("\n");
                 return 0;
             }
         }
 
         // Проверка на превышение бюджета и кредитного потенциала
-        if (totalCost > budget + y) {
+        if (totalCost > (budget + y)) {
+            debugInfo.append("Budget exceeded for chromosome: ")
+                    .append(Arrays.toString(x))
+                    .append(", credit: ")
+                    .append(y)
+                    .append(", total cost: ")
+                    .append(totalCost)
+                    .append(", budget: ")
+                    .append(budget)
+                    .append("\n");
             return 0;
         }
 
+        // Учет кредита
+        double totalCreditPaymentValue = totalCreditPayment(y, credPercent, k * 12);
+        totalCost += totalCreditPaymentValue; // Добавляем полную стоимость кредита
+
         // Вычисление чистой прибыли
         double netProfit = totalProfit - totalCost;
+
+        // Отладочный вывод
+        debugInfo.append("Chromosome: ")
+                .append(Arrays.toString(x))
+                .append(", Credit: ")
+                .append(y)
+                .append(", Net Profit: ")
+                .append(netProfit)
+                .append("\n");
 
         // Сохранение данных, если текущая хромосома лучше предыдущей лучшей
         if (netProfit > bestNetProfit) {
@@ -199,6 +239,7 @@ class EvolutionAlgorithm {
             bestSumCost = totalCost; // Сохраняем затраты на ресурсы
             bestSumProfit = totalProfit; // Сохраняем полученную выручку
         }
+
         return netProfit;
     }
     private static JTable createTable(int[] production, int k) {
@@ -242,6 +283,11 @@ class EvolutionAlgorithm {
     }
 
     private static void showResults(StringBuilder message) {
+        if (bestChromosome == null) {
+            System.err.println("Ошибка: Лучшая хромосома не была определена.");
+            return;
+        }
+
         JTable table = createTable(bestChromosome, k); // Ваши данные
         table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 
