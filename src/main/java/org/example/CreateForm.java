@@ -13,30 +13,29 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 
-import static org.example.ExcelTools.readFromExcel;
-
 class CreateForm {
-    private static int nval;
-    private static int mval;
-    private static int kval;
-    private static float qval;
-    private static float zval;
-    private static float pzval;
-    private static JTable table1;
-    private static JTable table2;
-    private static final Dimension textFieldDimension = new Dimension(230,38);
-    private static final Dimension textFieldDimension1 = new Dimension(260,38);
-    private static String[] columns;
-    private static Object[][] data;
-    private static JScrollPane pane1;
-    private static JScrollPane pane2;
-    private static double[][] rest;
-    private static double[][] res;
-    private static JPanel panelPane1;
-    private static JPanel panelPane2;
-    private static final Color color = Color.decode("#7BB4AD");
+    private int nval;
+    private int mval;
+    private int kval;
+    private float qval;
+    private  float zval;
+    private  float pzval;
+    private  JTable table1;
+    private  JTable table2;
+    private  final Dimension textFieldDimension = new Dimension(230,38);
+    private  final Dimension textFieldDimension1 = new Dimension(260,38);
+    private  String[] columns;
+    private  Object[][] data;
+    private  JScrollPane pane1;
+    private  JScrollPane pane2;
+    private  double[][] rest;
+    private  double[][] res;
+    private  JPanel panelPane1;
+    private  JPanel panelPane2;
+    private  final Color color = Color.decode("#7BB4AD");
+    public  boolean isChecked = false;
 
-    static void createView(){
+     void createView(){
         JFrame frame = new JFrame("Генетический алгоритм");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         ImageIcon icon = new ImageIcon("icon.png");
@@ -156,6 +155,7 @@ class CreateForm {
                     panelPane1.add(pane1);
                     //mainPanel.add(panelPane1);
 
+
                     panelPane2 = new JPanel(new FlowLayout(FlowLayout.LEFT));
                     pane2 = createTable2(nval, mval);
                     pane2.setBorder(BorderFactory.createTitledBorder("Таблица ресурсов"));
@@ -165,7 +165,6 @@ class CreateForm {
                     System.out.println(p2);
                     panelPane2.add(pane2);
                     //mainPanel.add(panelPane2);
-
 
                     JPanel second = new JPanel();
                     second.setBorder(BorderFactory.createEtchedBorder(0));
@@ -190,6 +189,13 @@ class CreateForm {
                     mainPanel.add(panelB2);
 
                     JPanel third = new JPanel();
+
+                    JCheckBox checkBox = new JCheckBox("Планирование 'одним интервалом'");
+                    checkBox.setLayout(new FlowLayout(FlowLayout.TRAILING));
+                    third.add(checkBox);
+
+                    checkBox.addItemListener(e1 -> isChecked = !isChecked);
+
                     third.setBorder(BorderFactory.createEtchedBorder(0));
                     third.add(panelQ);
                     third.add(panelZ);
@@ -218,12 +224,12 @@ class CreateForm {
                                 }
                                 table1.setEnabled(false);
                                 table2.setEnabled(false);
-                                b2.setEnabled(false);
                                 //rest = restrictions(table1);
                                 rest = restrictions((JTable) pane1.getViewport().getView());
                                 res = resources((JTable) pane2.getViewport().getView());
                                 //res = resources(table2);
-                                EvolutionAlgorithm.Start(rest, res, qval, zval, kval, pzval);
+                                EvolutionAlgorithm evo = new EvolutionAlgorithm();
+                                evo.Start(rest, res, qval, zval, kval, pzval,isChecked);
                                 frame.pack();
                                 frame.setLocationRelativeTo(null);
                             } catch (NumberFormatException oe) {
@@ -249,7 +255,7 @@ class CreateForm {
                 System.out.println("Выбранный файл: " + selectedFile.getAbsolutePath());
 
                 try {
-                    List<JTable> models = readFromExcel(selectedFile.getAbsolutePath());
+                    List<JTable> models = ExcelTools.readFromExcel(selectedFile.getAbsolutePath());
                     JTable pn1 = models.get(0);
                     pn1.setPreferredScrollableViewportSize(pn1.getPreferredSize());
                     JTable pn2 = models.get(1);
@@ -324,7 +330,7 @@ class CreateForm {
         frame.setVisible(true);
     }
 
-    private static double[][] restrictions (JTable table){
+    private  double[][] restrictions (JTable table){
         double[][] restrictions = new double[4][nval];
         for(int i = 0; i < 4; i++){
             for(int j = 1; j <= nval; j++){
@@ -336,7 +342,7 @@ class CreateForm {
         return restrictions;
     }
 
-    private static double[][] resources (JTable table){
+    private  double[][] resources (JTable table){
         double[][] resources = new double[mval][nval+1];
         for(int i = 0; i < mval; i++){
             for(int j = 1; j <= nval+1; j++){
@@ -348,7 +354,7 @@ class CreateForm {
         return resources;
     }
 
-    private static JScrollPane createTable1(int n){
+    private  JScrollPane createTable1(int n){
         columns = new String[n+1];
         for (int i = 1; i < columns.length; i++) {
             columns[i] = "Товар №" + i;
@@ -381,7 +387,7 @@ class CreateForm {
         return pane;
     }
 
-    private static JScrollPane createTable2(int n, int m){
+    private  JScrollPane createTable2(int n, int m){
         columns = new String[n+2];
         for (int i = 1; i < columns.length-1; i++) {
             columns[i] = "Товар №" + i;
@@ -416,7 +422,7 @@ class CreateForm {
         return pane;
     }
 
-    private static void resizeColumnWidth(JTable table) {
+    private  void resizeColumnWidth(JTable table) {
         final TableColumnModel columnModel = table.getColumnModel();
         for (int column = 0; column < table.getColumnCount(); column++) {
             int width = 15; // Минимальная ширина столбца

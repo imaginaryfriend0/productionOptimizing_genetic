@@ -13,7 +13,7 @@ import static io.jenetics.engine.Limits.bySteadyFitness;
 public class RastriginFunctionTest {
     private static final double A = 10;
     private static final double R = 5.12;
-    private static final int N = 2;
+    private static final int N = 5;
     static int answer = 0;
     @Test
     public void RastriginTest(){
@@ -36,9 +36,7 @@ public class RastriginFunctionTest {
         final Engine<DoubleGene, Double> engine = Engine
                 .builder(RastriginFunctionTest::fitness,
                         Codecs.ofVector(DoubleRange.of(min,max),size))
-                .populationSize(30000)
-                .selector(new TournamentSelector<>())
-                .maximalPhenotypeAge(11)
+                .populationSize(100000)
                 .optimize(Optimize.MINIMUM)
                 .alterers(
                         new Mutator<>(0.03),
@@ -49,7 +47,7 @@ public class RastriginFunctionTest {
                 statistics = EvolutionStatistics.ofNumber();
 
         final Phenotype <DoubleGene, Double> best = engine.stream()
-                .limit(bySteadyFitness(100))
+                .limit(bySteadyFitness(10))
                 .peek( statistics)
                 .collect(toBestPhenotype());
         return best.genotype().chromosome().stream().mapToDouble(DoubleGene::allele).toArray();

@@ -37,8 +37,8 @@ public class ProductionProblemSimplexTest {
                 .selector(new TournamentSelector<>())
                 .optimize(Optimize.MAXIMUM)
                 .alterers(
-                        new Mutator<>(0.03),
-                        new SinglePointCrossover<>(0.6)
+                        new Mutator<>(0.05),
+                        new SinglePointCrossover<>(0.65)
                 )
                 .build();
         final EvolutionStatistics<Integer,?>

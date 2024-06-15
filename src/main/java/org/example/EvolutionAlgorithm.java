@@ -15,27 +15,25 @@ import static io.jenetics.engine.EvolutionResult.toBestPhenotype;
 import static io.jenetics.engine.Limits.bySteadyFitness;
 
 class EvolutionAlgorithm {
-    private static int[] bestChromosome;
-    private static double bestSumCost;
-    private static double bestSumProfit;
-    private static double bestNetProfit;
-    private static double bestCreditUsed;
+    private int[] bestChromosome;
+    private double bestNetProfit;
 
-    private static float[] cost;
-    private static double credPercent;
-    private static int[] min;
-    private static int[] max;
-    private static int k;
-    private static float budget;
-    private static int[] productionLimit;
-    private static float[] resourcesCost;
-    private static double[][] resources;
-    public static IntRange[] intRanges;
-    public static DoubleRange doubleRange;
-    private static StringBuilder debugMessages = new StringBuilder();
+    private float[] cost;
+    private double credPercent;
+    private int[] min;
+    private int[] max;
+    private int k;
+    private float budget;
+    private int[] productionLimit;
+    private float[] resourcesCost;
+    private double[][] resources;
+    public IntRange[] intRanges;
+    public DoubleRange doubleRange;
+    private int chromLength;
+    private boolean isChecked;
 
 
-    private static void fillRestrictions(double[][] rest) {
+    private void fillRestrictions(double[][] rest) {
         // Начинаем с 0, поскольку шапка и первый столбец уже исключены
         for (int j = 0; j < rest[0].length; j++) {
             max[j] = (int) rest[0][j];
@@ -45,7 +43,7 @@ class EvolutionAlgorithm {
         }
     }
 
-    private static void fillResources(double[][] res) {
+    private void fillResources(double[][] res) {
         int rows = res.length;
         int cols = res[0].length;
 
@@ -62,7 +60,8 @@ class EvolutionAlgorithm {
     }
 
 
-    static void Start(double[][] restr, double[][] res, float qval, float zval, int kval, float pzval) {
+    public void Start(double[][] restr, double[][] res, float qval, float zval, int kval, float pzval, boolean isChecked) {
+        this.isChecked = isChecked;
         int length = restr[0].length;
         max = new int[length];
         min = new int[length];
@@ -70,12 +69,22 @@ class EvolutionAlgorithm {
         cost = new float[length];
         resources = new double[res.length][res[0].length - 1];
         resourcesCost = new float[res.length];
-
+        chromLength = length;
         k = kval;
         budget = qval;
         credPercent = pzval;
         fillRestrictions(restr);
         fillResources(res);
+
+        if (!isChecked) {
+            for (int i = 0; i < length; i++) {
+                min[i] *= k;
+                max[i] *= k;
+                productionLimit[i] *= k;
+            }
+        }
+
+        isEnoughFunds(qval,zval);
 
         intRanges = new IntRange[length];
         for (int i = 0; i < length; i++) {
@@ -86,33 +95,65 @@ class EvolutionAlgorithm {
         System.out.println((doubleRange));
 
         double[] bestChromosomeFitness = RunEvolution();
-        System.out.println(Arrays.toString(bestChromosomeFitness));
+        //Конвертируем хромосому в целочисленную
+        bestChromosome = convertBestChromosomeToInt(bestChromosomeFitness,intRanges);
 
-        StringBuilder message = new StringBuilder();
+        //Аналогичная конвертация, но теперь кредитного гена
+        double bestCreditUsed = (round(extractLastDoubleGene(bestChromosomeFitness, doubleRange), 2));
 
-        message.append("Лучшая хромосома - ").append(Arrays.toString(bestChromosome)).append(".\n");
-        message.append("Затраты производства по рассчитанному плану (включая кредит) составят ").append(rnd((float)bestSumCost)).append(" у.д.е.\n");
-        message.append("Были указаны бюджет в размере ").append(budget).append(" у.д.е и кредитные возможности в размере ").append(zval).append(" у.д.е.\n");
+        double bestSumCost = resCost(bestChromosome);
+        System.out.println("best cost = "+ bestSumCost);
 
-        message.append("Выручка с продаж составит ").append(rnd((float)bestSumProfit)).append(" у.д.е.\n");
+        double bestSumProfit = totSum(bestChromosome);
+        System.out.println("best sum = "+ bestSumProfit);
 
-        message.append("Для реализации рассчитанного плана потребуется взять в кредит ").append(rnd((float)bestCreditUsed)).append(" у.д.е.\n");
-        message.append("Прибыль составит ").append(rnd((float)bestNetProfit)).append(" у.д.е.\n");
-
-        // Новый расчет процентов по кредиту и общей суммы долга с процентами
+        System.out.println(bestNetProfit == (round((bestSumProfit - bestSumCost),2)));
         double totalCreditPaymentValue = totalCreditPayment(bestCreditUsed, pzval, k * 12);
-        double monthlyCreditPayment = totalCreditPaymentValue / (k * 12);
-        double totalCreditWithInterest = bestCreditUsed + (totalCreditPaymentValue - bestCreditUsed); // Сумма кредита плюс проценты
 
-        showResults(message);
-        System.out.println(debugMessages);
+
+        if (bestNetProfit != 0) {
+            StringBuilder message = new StringBuilder();
+            message.append("Оптимальный план производства: ").append(Arrays.toString(bestChromosome)).append(".\n");
+            message.append("Были указаны бюджет в размере ").append(budget).append(" у.д.е и кредитный потенциал в размере ").append(zval).append(" у.д.е.\n");
+            message.append("Затраты производства по рассчитанному плану составят ").append(round(bestSumCost, 2)).append(" у.д.е.\n");
+            message.append("Для реализации рассчитанного плана потребуется взять в кредит ").append(bestCreditUsed).append(" у.д.е.\n");
+            message.append("Кредитные затраты составят ").append(round(totalCreditPaymentValue, 2)).append(" у.д.е.\n");
+            message.append("Сумма затрат по рассчитанному плану составит ").append(round((bestSumCost + totalCreditPaymentValue), 2)).append(" у.д.е.\n");
+
+            message.append("Выручка с продаж составит ").append(round(bestSumProfit, 2)).append(" у.д.е.\n");
+
+            message.append("Прибыль составит ").append(bestNetProfit).append(" у.д.е.\n");
+
+            showResults(message);
+        } else {JOptionPane.showMessageDialog(null,"Оптимальное решение под заданные параметры не найдено");}
     }
 
-    public static double[] RunEvolution() {
+    public static double round(double value, int places) {
+        if (places < 0) throw new IllegalArgumentException();
+
+        long factor = (long) Math.pow(10, places);
+        value = value * factor;
+        long tmp = Math.round(value);
+        return (double) tmp / factor;
+    }
+
+    public static int[] convertBestChromosomeToInt(double[] bestChromosome, IntRange[] ranges) {
+        return IntStream.range(0, ranges.length)
+                .map(i -> (int) (bestChromosome[i] * ranges[i].size()) + ranges[i].min())
+                .toArray();
+    }
+
+    public static double extractLastDoubleGene(double[] bestChromosome, DoubleRange range) {
+        double value = bestChromosome[bestChromosome.length - 1];
+        return value * (range.max() - range.min()) + range.min();
+    }
+
+
+    public double[] RunEvolution() {
         final Engine<DoubleGene, Double> engine = Engine
-                .builder(EvolutionAlgorithm::fitness, codec(intRanges, doubleRange))
+                .builder(this::fitness, codec(intRanges, doubleRange))
                 .populationSize(100000)
-                .selector(new MonteCarloSelector<>())
+                .selector(new TournamentSelector<>())
                 .optimize(Optimize.MAXIMUM)
                 .alterers(
                         new Mutator<>(0.05),
@@ -126,6 +167,7 @@ class EvolutionAlgorithm {
                 .limit(bySteadyFitness(30))
                 .peek(statistics)
                 .collect(toBestPhenotype());
+        bestNetProfit = round(best.fitness(),2);
         return best.genotype().chromosome().stream().mapToDouble(DoubleGene::allele).toArray();
     }
 
@@ -147,12 +189,86 @@ class EvolutionAlgorithm {
         );
     }
 
+    public double fitness(Ranges value) {
+        double totalProfit = 0;
+        double totalCost = 0;
+        int[] x = value.ivalues();
+        double y = value.dvalue(); // Взятый кредит
 
-    private static float rnd(float number) {
-        number = Math.round(number * 100.0f) / 100.0f;
-        return number;
+        // Вычисление общей прибыли
+        for (int i = 0; i < x.length; i++) {
+            for (int j = 0; j < resources.length; j++) {
+                if (!isChecked) {
+                    totalCost += resources[j][i] * x[i] * resourcesCost[j]*k;
+                }
+                else totalCost += resources[j][i] * x[i] * resourcesCost[j];
+            }
+            totalProfit += cost[i] * x[i];
+            if (!isChecked){
+                if (x[i] < min[i] || x[i] > max[i] || x[i] > productionLimit[i] * k) return 0;
+            }
+            else {
+                if (x[i] < min[i] || x[i] > max[i] || x[i] > productionLimit[i]) return 0;
+            }
+        }
+
+        double totalCreditPaymentValue = totalCreditPayment(y, credPercent, k * 12);
+        totalCost += totalCreditPaymentValue;
+
+        // Проверка на превышение бюджета и кредитного потенциала
+        if (totalCost > (budget + y)) return 0;
+        return totalProfit - totalCost;
     }
-    private static double totalCreditPayment(double principal, double annualRate, int months) {
+
+    public boolean isEnoughFunds(double q, double z) {
+        // Вычисление затрат на ресурсы
+        double minPlanCost = 0;
+        for (int i = 0; i < chromLength; i++) {
+            for (int j = 0; j < resources.length; j++) {
+                if (!isChecked){
+                    minPlanCost += (resources[j][i] * min[i] * resourcesCost[j]*k);
+                }
+                else minPlanCost += (resources[j][i] * min[i] * resourcesCost[j]);
+            }
+        }
+        // Отладочное сообщение о минимальной сумме для начала производства
+        System.out.println("Минимальная сумма для начала производства: " + minPlanCost);
+        // Проверяем, достаточно ли средств для минимального плана
+        if (minPlanCost <= (q + z)) {
+            return true;
+        } else {
+            // Выводим сообщение в окне Swing о недостатке средств
+            JOptionPane.showMessageDialog(null, "Недостаточно средств для минимального производственного плана."+
+                    "\n"+"Для указанных параметров сумма выполнения минимального плана равна "+round(minPlanCost,2)+" у.д.е", "Ошибка", JOptionPane.ERROR_MESSAGE);
+            // В случае недостатка средств выбрасываем исключение
+            throw new IllegalStateException("Insufficient funds for the minimum production plan.");
+            // либо возвращаем false, если хотим просто завершить выполнение метода
+            // return false;
+        }
+    }
+
+    public double resCost(int[] x){
+        double totalCost = 0;
+        for (int i = 0; i < x.length; i++) {
+            for (int j = 0; j < resources.length; j++) {
+                if (!isChecked) {
+                     totalCost += resources[j][i] * x[i] * resourcesCost[j]*k;
+                }
+                else totalCost += resources[j][i] * x[i] * resourcesCost[j];
+            }
+        }
+        return totalCost;
+    }
+
+    public double totSum(int[] x){
+        double sum = 0;
+        for (int i = 0; i < x.length; i++) {
+            sum += cost[i] * x[i];
+        }
+        return sum;
+    }
+
+    private double totalCreditPayment(double principal, double annualRate, int months) {
         if (annualRate == 0) {
             return principal; // Процентная ставка 0%, возвращаем только тело кредита
         }
@@ -170,79 +286,8 @@ class EvolutionAlgorithm {
     }*/
 
 
-    public static double fitness(Ranges value) {
-        double totalProfit = 0;
-        double totalCost = 0;
-        int[] x = value.ivalues;
-        double y = value.dvalue; // Взятый кредит
-        StringBuilder debugInfo = new StringBuilder();
 
-        // Вычисление общей прибыли
-        for (int i = 0; i < x.length; i++) {
-            totalProfit += cost[i] * x[i];
-        }
-
-        // Вычисление затрат на ресурсы
-        for (int i = 0; i < x.length; i++) {
-            for (int j = 0; j < resources.length; j++) {
-                totalCost += resources[j][i] * x[i] * resourcesCost[j];
-            }
-        }
-
-        // Проверка ограничений
-        for (int i = 0; i < x.length; i++) {
-            if (x[i] < min[i] || x[i] > max[i] || x[i] > productionLimit[i] * k) {
-                debugInfo.append("Restriction violated for chromosome: ")
-                        .append(Arrays.toString(x))
-                        .append(", credit: ")
-                        .append(y)
-                        .append("\n");
-                return 0;
-            }
-        }
-
-        // Проверка на превышение бюджета и кредитного потенциала
-        if (totalCost > (budget + y)) {
-            debugInfo.append("Budget exceeded for chromosome: ")
-                    .append(Arrays.toString(x))
-                    .append(", credit: ")
-                    .append(y)
-                    .append(", total cost: ")
-                    .append(totalCost)
-                    .append(", budget: ")
-                    .append(budget)
-                    .append("\n");
-            return 0;
-        }
-
-        // Учет кредита
-        double totalCreditPaymentValue = totalCreditPayment(y, credPercent, k * 12);
-        totalCost += totalCreditPaymentValue; // Добавляем полную стоимость кредита
-
-        // Вычисление чистой прибыли
-        double netProfit = totalProfit - totalCost;
-
-        // Отладочный вывод
-        debugInfo.append("Chromosome: ")
-                .append(Arrays.toString(x))
-                .append(", Credit: ")
-                .append(y)
-                .append(", Net Profit: ")
-                .append(netProfit)
-                .append("\n");
-
-        // Сохранение данных, если текущая хромосома лучше предыдущей лучшей
-        if (netProfit > bestNetProfit) {
-            bestNetProfit = netProfit;
-            bestChromosome = value.ivalues(); // Сохраняем содержимое хромосомы
-            bestCreditUsed = value.dvalue(); // Сохраняем сумму взятого кредита
-            bestSumCost = totalCost; // Сохраняем затраты на ресурсы
-            bestSumProfit = totalProfit; // Сохраняем полученную выручку
-        }
-
-        return netProfit;
-    }
-    private static JTable createTable(int[] production, int k) {
+    private JTable createTable(int[] production, int k) {
         // Создание модели таблицы
         DefaultTableModel model = new DefaultTableModel();
         model.addColumn("Месяц");
@@ -282,7 +327,7 @@ class EvolutionAlgorithm {
         return table;
     }
 
-    private static void showResults(StringBuilder message) {
+    private void showResults(StringBuilder message) {
         if (bestChromosome == null) {
             System.err.println("Ошибка: Лучшая хромосома не была определена.");
             return;

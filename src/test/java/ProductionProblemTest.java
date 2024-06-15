@@ -15,7 +15,7 @@ public class ProductionProblemTest {
     public void ProductionTest(){
         int[] chromosome = Calculate(0,1000);
         int result = fitness(chromosome);
-
+        
         System.out.println("Задача 2: \nОжидаемый результат: " + answer + ".\nПолученный результат: " + result+".");
         Assertions.assertEquals(answer, result);
     }
@@ -24,7 +24,10 @@ public class ProductionProblemTest {
         int x = params[0];
         int y = params[1];
         int sum = 80*x+100*y;
-        if((20*x+40*y > 4000) || (4*x+6*y > 900) || (4*x+4*y > 600) || (30*x+50*y > 6000)) sum = 0;
+        if(     (20*x+40*y > 4000) ||
+                (4*x+6*y > 900) ||
+                (4*x+4*y > 600) ||
+                (30*x+50*y > 6000)  ) sum = 0;
         return sum;
     }
 
@@ -36,8 +39,8 @@ public class ProductionProblemTest {
                 .selector(new TournamentSelector<>())
                 .optimize(Optimize.MAXIMUM)
                 .alterers(
-                        new Mutator<>(0.1),
-                        new MultiPointCrossover<>(0.7)
+                        new Mutator<>(0.05),
+                        new MultiPointCrossover<>(0.65)
                 )
                 .build();
         final EvolutionStatistics<Integer,?>
